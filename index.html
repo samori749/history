@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Колыбель Цивилизаций</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Marcellus&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Three.js for 3D City & Wonder Visualizations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+        .font-marcellus {
+            font-family: 'Marcellus', serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        .pb-safe {
+            padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+        }
+        #canvas-container {
+            width: 100%;
+            height: 220px;
+            position: relative;
+            touch-action: none;
+        }
+        @media (min-width: 640px) {
+            #canvas-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col">
+
+    <!-- TOP BAR -->
+    <header class="glass-panel px-3 py-2 border-b border-slate-800 z-20 shrink-0">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center space-x-2.5">
+                <div id="civ-icon-container" class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 text-sm shadow-inner shrink-0">
+                    <i class="fa-solid fa-landmark"></i>
+                </div>
+                <div>
+                    <h1 id="civ-title" class="font-cinzel text-sm sm:text-base font-bold text-amber-400 tracking-wider leading-tight">Загрузка...</h1>
+                    <p id="civ-era" class="text-[10px] text-slate-400">Эра: Древний Мир</p>
+                </div>
+            </div>
+            <button id="manual-harvest-btn" onclick="manualHarvest()" class="py-1.5 px-3 bg-gradient-to-r from-amber-600 to-amber-700 active:scale-95 text-amber-950 text-xs font-black rounded-lg shadow transition flex items-center space-x-1.5 shrink-0">
+                <i class="fa-solid fa-hand-pointer text-xs"></i>
+                <span>Сбор</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-5 gap-1 sm:gap-2 text-[11px] font-medium">
+            <div class="flex flex-col items-center bg-slate-900/80 p-1 rounded border border-amber-500/20" title="Золото">
+                <div class="flex items-center space-x-1 text-amber-400">
+                    <i class="fa-solid fa-coins text-[10px]"></i>
+                    <span id="res-gold" class="font-bold text-amber-200">0</span>
+                </div>
+                <span id="rate-gold" class="text-[9px] text-emerald-400">+0/с</span>
+            </div>
+            <div class="flex flex-col items-center bg-slate-900/80 p-1 rounded border border-emerald-500/20" title="Еда">
+                <div class="flex items-center space-x-1 text-emerald-400">
+                    <i class="fa-solid fa-wheat-awn text-[10px]"></i>
+                    <span id="res-food" class="font-bold text-emerald-200">0</span>
+                </div>
+                <span id="rate-food" class="text-[9px] text-emerald-400">+0/с</span>
+            </div>
+            <div class="flex flex-col items-center bg-slate-900/80 p-1 rounded border border-orange-500/20" title="Производство">
+                <div class="flex items-center space-x-1 text-orange-400">
+                    <i class="fa-solid fa-hammer text-[10px]"></i>
+                    <span id="res-prod" class="font-bold text-orange-200">0</span>
+                </div>
+                <span id="rate-prod" class="text-[9px] text-emerald-400">+0/с</span>
+            </div>
+            <div class="flex flex-col items-center bg-slate-900/80 p-1 rounded border border-purple-500/20" title="Культура">
+                <div class="flex items-center space-x-1 text-purple-400">
+                    <i class="fa-solid fa-scroll text-[10px]"></i>
+                    <span id="res-culture" class="font-bold text-purple-200">0</span>
+                </div>
+                <span id="rate-culture" class="text-[9px] text-emerald-400">+0/с</span>
+            </div>
+            <div class="flex flex-col items-center bg-slate-900/80 p-1 rounded border border-blue-500/20" title="Население">
+                <div class="flex items-center space-x-1 text-blue-400">
+                    <i class="fa-solid fa-users text-[10px]"></i>
+                    <span id="res-pop" class="font-bold text-blue-200">0</span>
+                </div>
+                <span class="text-[9px] text-slate-400">нас.</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- SELECT CIVILIZATION MODAL -->
+    <div id="civ-selector-modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-3 overflow-y-auto">
+        <div class="max-w-md md:max-w-4xl w-full my-auto py-4">
+            <div class="text-center mb-5">
+                <h1 class="font-cinzel text-2xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-500 to-amber-200 mb-1">КОЛЫБЕЛЬ ЦИВИЛИЗАЦИЙ</h1>
+                <p class="text-slate-400 font-marcellus text-xs sm:text-sm">Выберите Великую Цивилизацию и возглавьте её!</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 max-h-[75vh] overflow-y-auto p-1 custom-scrollbar" id="civ-cards-container"></div>
+        </div>
+    </div>
+
+    <!-- MAIN GAME AREA -->
+    <main class="flex-1 overflow-y-auto p-3 sm:p-6 custom-scrollbar bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pb-20">
+        <div id="tab-city" class="space-y-4 max-w-3xl mx-auto">
+            <div class="glass-panel rounded-xl overflow-hidden border border-amber-500/30 relative">
+                <div class="absolute top-2 left-2 z-10 bg-slate-950/80 px-2.5 py-1 rounded border border-slate-700/60 text-[10px] text-amber-300 flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-cube text-amber-400"></i>
+                    <span>3D Город (Вращайте пальцем)</span>
+                </div>
+                <div id="canvas-container" class="bg-slate-950"></div>
+            </div>
+
+            <div id="civ-hero-card" class="glass-panel p-4 rounded-xl border border-amber-500/30 relative overflow-hidden bg-gradient-to-r from-amber-950/40 to-slate-900/80">
+                <div>
+                    <span class="text-[10px] uppercase tracking-widest text-amber-400 font-bold">Особенность Цивилизации</span>
+                    <h2 id="civ-ability-name" class="font-cinzel text-lg font-bold text-white mt-0.5">...</h2>
+                    <p id="civ-ability-desc" class="text-xs text-slate-300 mt-1">...</p>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-cinzel text-base font-bold text-amber-400 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-gopuram"></i> Чудо Света
+                </h3>
+                <div class="glass-panel p-4 rounded-xl border border-slate-800 space-y-3">
+                    <div class="flex items-center space-x-3 bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                        <div id="wonder-icon" class="text-3xl text-amber-400 animate-float shrink-0">
+                            <i class="fa-solid fa-monument"></i>
+                        </div>
+                        <div>
+                            <h4 id="wonder-name" class="font-cinzel text-sm sm:text-base font-bold text-slate-100">...</h4>
+                            <p id="wonder-status" class="text-[11px] text-amber-400 font-semibold">Не начато</p>
+                        </div>
+                    </div>
+                    <p id="wonder-desc" class="text-xs text-slate-300">...</p>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1 font-semibold">
+                            <span class="text-slate-400">Прогресс постройки</span>
+                            <span id="wonder-progress-text" class="text-amber-400">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                            <div id="wonder-progress-bar" class="bg-gradient-to-r from-amber-600 to-amber-400 h-full rounded-full transition-all duration-300 w-0"></div>
+                        </div>
+                    </div>
+                    <div id="wonder-cost-container" class="flex flex-wrap gap-1.5 text-[11px]"></div>
+                    <button id="wonder-build-btn" onclick="buildWonderStep()" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 active:scale-95 text-slate-950 font-bold text-xs rounded-lg transition shadow flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-hammer"></i>
+                        <span>Вложить ресурсы в Чудо</span>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-cinzel text-sm font-bold text-slate-300 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-book-bookmark"></i> Летопись
+                </h3>
+                <div id="game-logs" class="glass-panel p-3 rounded-lg border border-slate-800 h-28 overflow-y-auto custom-scrollbar text-[11px] space-y-1.5 text-slate-400"></div>
+            </div>
+        </div>
+
+        <div id="tab-buildings" class="hidden space-y-3 max-w-3xl mx-auto">
+            <div>
+                <h2 class="font-cinzel text-lg font-bold text-amber-400">Городские Строения</h2>
+                <p class="text-[11px] text-slate-400">Увеличивают пассивный доход ресурсов</p>
+            </div>
+            <div id="buildings-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+
+        <div id="tab-tech" class="hidden space-y-3 max-w-3xl mx-auto">
+            <div>
+                <h2 class="font-cinzel text-lg font-bold text-amber-400">Научные Открытия</h2>
+                <p class="text-[11px] text-slate-400">Исследования повышают эффективность экономики и войск</p>
+            </div>
+            <div id="tech-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+
+        <div id="tab-military" class="hidden space-y-3 max-w-3xl mx-auto">
+            <div>
+                <h2 class="font-cinzel text-lg font-bold text-amber-400">Военный Лагерь</h2>
+                <p class="text-[11px] text-slate-400">Нанимайте воинов для участия в военных походах</p>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                <div class="glass-panel p-2.5 rounded-lg border border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Сила Армии</span>
+                    <div id="total-military-power" class="text-base font-bold text-red-400">0</div>
+                </div>
+                <div class="glass-panel p-2.5 rounded-lg border border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Всего Юнитов</span>
+                    <div id="total-units-count" class="text-base font-bold text-amber-400">0</div>
+                </div>
+                <div class="glass-panel p-2.5 rounded-lg border border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Содержание</span>
+                    <div id="upkeep-cost" class="text-base font-bold text-emerald-400">0 Золота</div>
+                </div>
+                <div class="glass-panel p-2.5 rounded-lg border border-slate-800 col-span-2 sm:col-span-1">
+                    <span class="text-[10px] text-slate-400 uppercase font-semibold">Спец. Юнит</span>
+                    <div id="unique-unit-name" class="text-xs font-bold text-purple-400 truncate">...</div>
+                </div>
+            </div>
+            <div id="units-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+        </div>
+
+        <div id="tab-expedition" class="hidden space-y-3 max-w-3xl mx-auto">
+            <div>
+                <h2 class="font-cinzel text-lg font-bold text-amber-400">Походы и Войны</h2>
+                <p class="text-[11px] text-slate-400">Отправляйте армию в набеги за золотом и ресурсами</p>
+            </div>
+            <div id="campaigns-container" class="grid grid-cols-1 gap-3"></div>
+        </div>
+    </main>
+
+    <!-- MOBILE BOTTOM NAVIGATION -->
+    <nav class="fixed bottom-0 left-0 right-0 glass-panel bg-slate-950/90 border-t border-slate-800 z-30 px-2 py-1.5 flex justify-around items-center">
+        <button onclick="switchTab('city')" id="tab-btn-city" class="flex flex-col items-center py-1 px-2.5 rounded-lg text-amber-400 font-semibold">
+            <i class="fa-solid fa-city text-base mb-0.5"></i>
+            <span class="text-[10px]">Город</span>
+        </button>
+        <button onclick="switchTab('buildings')" id="tab-btn-buildings" class="flex flex-col items-center py-1 px-2.5 rounded-lg text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-warehouse text-base mb-0.5"></i>
+            <span class="text-[10px]">Здания</span>
+        </button>
+        <button onclick="switchTab('tech')" id="tab-btn-tech" class="flex flex-col items-center py-1 px-2.5 rounded-lg text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-flask text-base mb-0.5"></i>
+            <span class="text-[10px]">Наука</span>
+        </button>
+        <button onclick="switchTab('military')" id="tab-btn-military" class="flex flex-col items-center py-1 px-2.5 rounded-lg text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-shield-halberd text-base mb-0.5"></i>
+            <span class="text-[10px]">Армия</span>
+        </button>
+        <button onclick="switchTab('expedition')" id="tab-btn-expedition" class="flex flex-col items-center py-1 px-2.5 rounded-lg text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-compass text-base mb-0.5"></i>
+            <span class="text-[10px]">Походы</span>
+        </button>
+    </nav>
+
+    <script>
+        let scene, camera, renderer, cityGroup, cloudsGroup;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let is3DInitialized = false;
+
+        const ARCH_STYLES = {
+            egypt: {
+                groundColor: 0xd97706,
+                buildingColors: { farm: 0x65a30d, mine: 0xb45309, market: 0xf59e0b, academy: 0x38bdf8 },
+                roofStyle: 'flat',
+                wonderColor: 0xfacc15
+            },
+            mesopotamia: {
+                groundColor: 0x059669,
+                buildingColors: { farm: 0x16a34a, mine: 0x78350f, market: 0xd97706, academy: 0x6366f1 },
+                roofStyle: 'terraced',
+                wonderColor: 0x10b981
+            },
+            china: {
+                groundColor: 0x15803d,
+                buildingColors: { farm: 0x4d7c0f, mine: 0x9a3412, market: 0xd97706, academy: 0xe11d48 },
+                roofStyle: 'pagoda',
+                wonderColor: 0xef4444
+            },
+            india: {
+                groundColor: 0x047857,
+                buildingColors: { farm: 0x65a30d, mine: 0x854d0e, market: 0xf59e0b, academy: 0xa855f7 },
+                roofStyle: 'dome',
+                wonderColor: 0xf97316
+            },
+            persia: {
+                groundColor: 0xb45309,
+                buildingColors: { farm: 0x84cc16, mine: 0x7c2d12, market: 0xeab308, academy: 0x8b5cf6 },
+                roofStyle: 'columns',
+                wonderColor: 0xa855f7
+            }
+        };
+
+        function init3DScene() {
+            const container = document.getElementById('canvas-container');
+            if (!container) return;
+
+            // Clear any old canvas elements
+            container.innerHTML = '';
+
+            const width = container.clientWidth || 300;
+            const height = container.clientHeight || 220;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0f1d);
+            scene.fog = new THREE.FogExp2(0x0a0f1d, 0.015);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(0, 18, 30);
+            camera.lookAt(0, 1.5, 0);
+
+            try {
+                renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                renderer.shadowMap.enabled = true;
+                container.appendChild(renderer.domElement);
+            } catch (e) {
+                console.error("WebGL initialization failed:", e);
+                container.innerHTML = '<div class="flex items-center justify-center h-full text-xs text-red-400">Ошибка загрузки 3D WebGL</div>';
+                return;
+            }
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfff7ed, 1.4);
+            sunLight.position.set(20, 35, 20);
+            scene.add(sunLight);
+
+            cityGroup = new THREE.Group();
+            scene.add(cityGroup);
+
+            cloudsGroup = new THREE.Group();
+            for (let i = 0; i < 5; i++) {
+                const cloudGeo = new THREE.DodecahedronGeometry(1.5 + Math.random(), 1);
+                const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 });
+                const cloud = new THREE.Mesh(cloudGeo, cloudMat);
+                cloud.position.set((Math.random() - 0.5) * 35, 14 + Math.random() * 4, (Math.random() - 0.5) * 35);
+                cloudsGroup.add(cloud);
+            }
+            scene.add(cloudsGroup);
+
+            const dom = renderer.domElement;
+            const handleStart = (x, y) => { isDragging = true; previousMousePosition = { x, y }; };
+            const handleMove = (x, y) => {
+                if (!isDragging || !cityGroup) return;
+                const deltaX = x - previousMousePosition.x;
+                cityGroup.rotation.y += deltaX * 0.008;
+                previousMousePosition = { x, y };
+            };
+            const handleEnd = () => { isDragging = false; };
+
+            dom.addEventListener('mousedown', (e) => handleStart(e.clientX, e.clientY));
+            dom.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+            window.addEventListener('mouseup', handleEnd);
+
+            dom.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) handleStart(e.touches[0].clientX, e.touches[0].clientY);
+            });
+            dom.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+            });
+            window.addEventListener('touchend', handleEnd);
+
+            window.addEventListener('resize', onWindowResize);
+
+            is3DInitialized = true;
+            update3DCityModel();
+            animate3D();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !renderer || !camera) return;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            if (width > 0 && height > 0) {
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            }
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (!isDragging && cityGroup) {
+                cityGroup.rotation.y += 0.0015;
+            }
+            if (cloudsGroup) {
+                cloudsGroup.rotation.y += 0.0005;
+            }
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        function update3DCityModel() {
+            if (!cityGroup || !gameState.selectedCiv) return;
+
+            while (cityGroup.children.length > 0) {
+                cityGroup.remove(cityGroup.children[0]);
+            }
+
+            const civId = gameState.selectedCiv.id;
+            const style = ARCH_STYLES[civId] || ARCH_STYLES.egypt;
+
+            const groundGeo = new THREE.CylinderGeometry(13, 14, 1.2, 32);
+            const groundMat = new THREE.MeshStandardMaterial({ color: style.groundColor, roughness: 0.9 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.position.y = -0.6;
+            cityGroup.add(ground);
+
+            const waterGeo = new THREE.RingGeometry(13.8, 18, 32);
+            const waterMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.2, transparent: true, opacity: 0.6 });
+            const water = new THREE.Mesh(waterGeo, waterMat);
+            water.rotation.x = -Math.PI / 2;
+            water.position.y = -0.55;
+            cityGroup.add(water);
+
+            const wonderProgress = Math.max(0.1, gameState.wonderProgress / 100);
+            const wonderGroup = new THREE.Group();
+            const wonderMat = new THREE.MeshStandardMaterial({ color: style.wonderColor, roughness: 0.3, metalness: 0.3 });
+
+            if (civId === 'egypt') {
+                const h = 7 * wonderProgress;
+                const pyrGeo = new THREE.ConeGeometry(5.5 * wonderProgress, h, 4);
+                const pyr = new THREE.Mesh(pyrGeo, wonderMat);
+                pyr.position.y = h / 2;
+                pyr.rotation.y = Math.PI / 4;
+                wonderGroup.add(pyr);
+
+                if (wonderProgress >= 1) {
+                    const capGeo = new THREE.ConeGeometry(1.2, 1.5, 4);
+                    const capMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
+                    const cap = new THREE.Mesh(capGeo, capMat);
+                    cap.position.y = h - 0.7;
+                    cap.rotation.y = Math.PI / 4;
+                    wonderGroup.add(cap);
+                }
+            } else if (civId === 'mesopotamia') {
+                const layers = Math.max(1, Math.ceil(5 * wonderProgress));
+                for (let i = 0; i < layers; i++) {
+                    const size = 7 - i * 1.1;
+                    const geo = new THREE.BoxGeometry(size, 1.0, size);
+                    const layer = new THREE.Mesh(geo, wonderMat);
+                    layer.position.y = i * 1.0 + 0.5;
+                    wonderGroup.add(layer);
+                }
+            } else if (civId === 'china') {
+                const height = 8 * wonderProgress;
+                const towerGeo = new THREE.BoxGeometry(3, height, 3);
+                const tower = new THREE.Mesh(towerGeo, wonderMat);
+                tower.position.y = height / 2;
+                wonderGroup.add(tower);
+
+                const roofCount = Math.floor(4 * wonderProgress);
+                for (let r = 1; r <= roofCount; r++) {
+                    const rGeo = new THREE.ConeGeometry(3.2 - r * 0.4, 0.8, 4);
+                    const rMat = new THREE.MeshStandardMaterial({ color: 0x991b1b });
+                    const roof = new THREE.Mesh(rGeo, rMat);
+                    roof.position.y = r * (height / roofCount);
+                    roof.rotation.y = Math.PI / 4;
+                    wonderGroup.add(roof);
+                }
+            } else if (civId === 'india') {
+                const baseGeo = new THREE.BoxGeometry(6 * wonderProgress, 3 * wonderProgress, 6 * wonderProgress);
+                const base = new THREE.Mesh(baseGeo, wonderMat);
+                base.position.y = 1.5 * wonderProgress;
+                wonderGroup.add(base);
+
+                const domeGeo = new THREE.SphereGeometry(2.5 * wonderProgress, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+                const dome = new THREE.Mesh(domeGeo, wonderMat);
+                dome.position.y = 3 * wonderProgress;
+                wonderGroup.add(dome);
+            } else {
+                const baseGeo = new THREE.BoxGeometry(7 * wonderProgress, 1.5, 5 * wonderProgress);
+                const base = new THREE.Mesh(baseGeo, wonderMat);
+                base.position.y = 0.75;
+                wonderGroup.add(base);
+
+                const pillarCount = Math.floor(6 * wonderProgress);
+                for (let p = 0; p < pillarCount; p++) {
+                    const pilGeo = new THREE.CylinderGeometry(0.3, 0.3, 4 * wonderProgress, 8);
+                    const pil = new THREE.Mesh(pilGeo, wonderMat);
+                    const posX = -2.5 + (p % 3) * 2.5;
+                    const posZ = -1.5 + Math.floor(p / 3) * 3;
+                    pil.position.set(posX, 1.5 + (2 * wonderProgress), posZ);
+                    wonderGroup.add(pil);
+                }
+            }
+            cityGroup.add(wonderGroup);
+
+            const bTypes = ['farm', 'mine', 'market', 'academy'];
+            let buildingIndex = 0;
+
+            bTypes.forEach(type => {
+                const count = gameState.buildings[type].count;
+                const bColor = style.buildingColors[type];
+
+                for (let i = 0; i < count; i++) {
+                    const angle = (buildingIndex * 0.55) + (i * 0.4);
+                    const radius = 6.8 + (buildingIndex % 2) * 2.2;
+                    const x = Math.cos(angle) * radius;
+                    const z = Math.sin(angle) * radius;
+
+                    const buildingGroup = new THREE.Group();
+                    const h = 1.2 + (i * 0.15);
+                    const bGeo = new THREE.BoxGeometry(1.2, h, 1.2);
+                    const bMat = new THREE.MeshStandardMaterial({ color: bColor, roughness: 0.6 });
+                    const body = new THREE.Mesh(bGeo, bMat);
+                    body.position.y = h / 2;
+                    buildingGroup.add(body);
+
+                    if (style.roofStyle === 'pagoda') {
+                        const roofGeo = new THREE.ConeGeometry(1.1, 0.6, 4);
+                        const roofMat = new THREE.MeshStandardMaterial({ color: 0x991b1b });
+                        const roof = new THREE.Mesh(roofGeo, roofMat);
+                        roof.position.y = h + 0.3;
+                        roof.rotation.y = Math.PI / 4;
+                        buildingGroup.add(roof);
+                    } else if (style.roofStyle === 'dome') {
+                        const roofGeo = new THREE.SphereGeometry(0.7, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+                        const roofMat = new THREE.MeshStandardMaterial({ color: 0xfacc15 });
+                        const roof = new THREE.Mesh(roofGeo, roofMat);
+                        roof.position.y = h;
+                        buildingGroup.add(roof);
+                    } else if (style.roofStyle === 'terraced') {
+                        const roofGeo = new THREE.BoxGeometry(0.8, 0.4, 0.8);
+                        const roofMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+                        const roof = new THREE.Mesh(roofGeo, roofMat);
+                        roof.position.y = h + 0.2;
+                        buildingGroup.add(roof);
+                    }
+
+                    buildingGroup.position.set(x, 0, z);
+                    cityGroup.add(buildingGroup);
+
+                    buildingIndex++;
+                }
+            });
+        }
+
+        const CIVILIZATIONS = {
+            egypt: {
+                id: 'egypt',
+                name: 'Древний Египет',
+                title: 'Фараон',
+                icon: 'fa-monument',
+                color: 'from-amber-500 to-yellow-600',
+                ability: 'Великий Нил',
+                abilityDesc: '+50% к Еде и сниженная стоимость Чуда.',
+                wonder: {
+                    name: 'Пирамида Гизы',
+                    desc: 'Дарует божественный авторитет и ускорение Культуры на 100%.',
+                    cost: { prod: 3000, gold: 2000, culture: 800 },
+                    icon: 'fa-pyramid'
+                },
+                uniqueUnit: {
+                    id: 'chariot',
+                    name: 'Боевая Колесница',
+                    desc: 'Быстрые колесницы с лучниками.',
+                    power: 25,
+                    cost: { gold: 80, prod: 60 }
+                },
+                bonuses: { foodMultiplier: 1.5, wonderDiscount: 0.8 }
+            },
+            mesopotamia: {
+                id: 'mesopotamia',
+                name: 'Вавилон (Месопотамия)',
+                title: 'Царь',
+                icon: 'fa-archway',
+                color: 'from-emerald-600 to-teal-700',
+                ability: 'Кодекс Законов',
+                abilityDesc: '+40% к Золоту и дешевые технологии.',
+                wonder: {
+                    name: 'Висячие Сады',
+                    desc: 'Обеспечивает невероятный рост населения.',
+                    cost: { prod: 2800, gold: 2500, food: 2000 },
+                    icon: 'fa-tree'
+                },
+                uniqueUnit: {
+                    id: 'spearman',
+                    name: 'Щитоносец Вавилона',
+                    desc: 'Тяжеловооруженная пехота.',
+                    power: 18,
+                    cost: { gold: 50, prod: 50 }
+                },
+                bonuses: { goldMultiplier: 1.4, techDiscount: 0.85 }
+            },
+            china: {
+                id: 'china',
+                name: 'Древний Китай',
+                title: 'Император',
+                icon: 'fa-yin-yang',
+                color: 'from-red-600 to-rose-700',
+                ability: 'Шелковый Путь',
+                abilityDesc: '+40% к Производству и защитный бонус.',
+                wonder: {
+                    name: 'Великая Стена',
+                    desc: 'Повышает военную силу армии на 50%.',
+                    cost: { prod: 3500, gold: 1500, culture: 1500 },
+                    icon: 'fa-chess-wall'
+                },
+                uniqueUnit: {
+                    id: 'repeating_crossbow',
+                    name: 'Арбалетчик Чжугэ Ну',
+                    desc: 'Скорострельный многозарядный арбалет.',
+                    power: 22,
+                    cost: { gold: 70, prod: 70 }
+                },
+                bonuses: { prodMultiplier: 1.4, defenseBoost: 1.3 }
+            },
+            india: {
+                id: 'india',
+                name: 'Древняя Индия',
+                title: 'Раджа',
+                icon: 'fa-om',
+                color: 'from-orange-500 to-amber-600',
+                ability: 'Духовное Наследие',
+                abilityDesc: '+100% к Культуре и рост населения.',
+                wonder: {
+                    name: 'Храм Кайласа',
+                    desc: 'Удваивает прирост всех ресурсов.',
+                    cost: { prod: 2500, gold: 2000, culture: 2500 },
+                    icon: 'fa-place-of-worship'
+                },
+                uniqueUnit: {
+                    id: 'war_elephant',
+                    name: 'Боевой Слон',
+                    desc: 'Гигантский сокрушительный слон.',
+                    power: 45,
+                    cost: { gold: 150, prod: 120 }
+                },
+                bonuses: { cultureMultiplier: 2.0, popGrowSpeed: 1.5 }
+            },
+            persia: {
+                id: 'persia',
+                name: 'Персидская Империя',
+                title: 'Шахиншах',
+                icon: 'fa-crown',
+                color: 'from-purple-600 to-indigo-700',
+                ability: 'Бессмертные',
+                abilityDesc: '-50% содержание войск и +70% награды в походах.',
+                wonder: {
+                    name: 'Дворец Персеполя',
+                    desc: 'Удваивает доход со всех военных походов.',
+                    cost: { prod: 3000, gold: 3000, culture: 1000 },
+                    icon: 'fa-dungeon'
+                },
+                uniqueUnit: {
+                    id: 'immortal',
+                    name: 'Персидский Бессмертный',
+                    desc: 'Элитный воин гвардии.',
+                    power: 30,
+                    cost: { gold: 90, prod: 70 }
+                },
+                bonuses: { campaignRewardMultiplier: 1.7, militaryUpkeepDiscount: 0.5 }
+            }
+        };
+
+        let gameState = {
+            selectedCiv: null,
+            resources: { gold: 50, food: 50, prod: 20, culture: 0, pop: 10 },
+            rates: { gold: 0, food: 0, prod: 0, culture: 0 },
+            wonderProgress: 0,
+            wonderCompleted: false,
+            buildings: {
+                farm: { count: 1, baseCost: { gold: 15, prod: 10 }, name: 'Фермы / Поля', icon: 'fa-wheat-field' },
+                mine: { count: 1, baseCost: { gold: 20, food: 10 }, name: 'Каменоломня', icon: 'fa-mountain' },
+                market: { count: 0, baseCost: { prod: 30, food: 20 }, name: 'Базар / Рынок', icon: 'fa-store' },
+                academy: { count: 0, baseCost: { gold: 50, prod: 40 }, name: 'Академия / Храм', icon: 'fa-book' }
+            },
+            techs: {
+                wheel: { researched: false, cost: { culture: 30 }, name: 'Колесо', desc: '+20% к Производству', icon: 'fa-dharmachakra' },
+                writing: { researched: false, cost: { culture: 60 }, name: 'Письменность', desc: '+30% к Культуре', icon: 'fa-pen-nib' },
+                bronze: { researched: false, cost: { culture: 100 }, name: 'Обработка бронзы', desc: '+25% к Силе всех войск', icon: 'fa-shield' },
+                currency: { researched: false, cost: { culture: 200 }, name: 'Чеканка монет', desc: '+50% к Доходу золота', icon: 'fa-coins' }
+            },
+            army: {
+                militia: { count: 0, power: 5, cost: { gold: 15, prod: 10 }, name: 'Ополченец', icon: 'fa-user-shield' },
+                archer: { count: 0, power: 12, cost: { gold: 35, prod: 25 }, name: 'Лучник', icon: 'fa-bow-arrow' },
+                unique: { count: 0 }
+            },
+            campaigns: [
+                { id: 'camp1', name: 'Набег Разбойников', reqPower: 15, reward: { gold: 80, food: 60 }, icon: 'fa-skull' },
+                { id: 'camp2', name: 'Зачистка Оазиса', reqPower: 60, reward: { gold: 250, prod: 150 }, icon: 'fa-campground' },
+                { id: 'camp3', name: 'Завоевание Царства', reqPower: 200, reward: { gold: 800, culture: 400 }, icon: 'fa-chess-king' },
+                { id: 'camp4', name: 'Великий Поход', reqPower: 500, reward: { gold: 2500, prod: 1200, culture: 1000 }, icon: 'fa-dragon' }
+            ],
+            logs: []
+        };
+
+        function initCivSelector() {
+            const container = document.getElementById('civ-cards-container');
+            container.innerHTML = '';
+
+            Object.values(CIVILIZATIONS).forEach(civ => {
+                const card = document.createElement('div');
+                card.className = `glass-panel p-3 sm:p-4 rounded-xl border border-slate-700 hover:border-amber-500 cursor-pointer transition flex items-center sm:flex-col space-x-3 sm:space-x-0 space-y-0 sm:space-y-2 group`;
+                card.onclick = () => selectCivilization(civ.id);
+
+                card.innerHTML = `
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${civ.color} flex items-center justify-center text-lg text-white shadow shrink-0">
+                        <i class="fa-solid ${civ.icon}"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-cinzel text-sm sm:text-base font-bold text-amber-300 leading-tight">${civ.name}</h3>
+                        <span class="text-[10px] text-slate-400 block">${civ.title}</span>
+                        <p class="text-[11px] text-slate-300 mt-1"><strong class="text-amber-400">${civ.ability}:</strong> ${civ.abilityDesc}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectCivilization(civId) {
+            gameState.selectedCiv = CIVILIZATIONS[civId];
+            document.getElementById('civ-selector-modal').classList.add('hidden');
+            
+            addLog(`Вы возглавили цивилизацию: ${gameState.selectedCiv.name}!`);
+
+            document.getElementById('civ-title').innerText = gameState.selectedCiv.name;
+            document.getElementById('civ-icon-container').innerHTML = `<i class="fa-solid ${gameState.selectedCiv.icon}"></i>`;
+            document.getElementById('civ-ability-name').innerText = gameState.selectedCiv.ability;
+            document.getElementById('civ-ability-desc').innerText = gameState.selectedCiv.abilityDesc;
+
+            document.getElementById('wonder-name').innerText = gameState.selectedCiv.wonder.name;
+            document.getElementById('wonder-desc').innerText = gameState.selectedCiv.wonder.desc;
+            document.getElementById('wonder-icon').innerHTML = `<i class="fa-solid ${gameState.selectedCiv.wonder.icon}"></i>`;
+
+            document.getElementById('unique-unit-name').innerText = gameState.selectedCiv.uniqueUnit.name;
+
+            renderAll();
+
+            // Initialize or update 3D scene correctly after modal hides
+            setTimeout(() => {
+                if (!is3DInitialized) {
+                    init3DScene();
+                } else {
+                    onWindowResize();
+                    update3DCityModel();
+                }
+            }, 50);
+        }
+
+        function calculateRates() {
+            if (!gameState.selectedCiv) return;
+
+            const bonuses = gameState.selectedCiv.bonuses;
+
+            let foodRate = (gameState.buildings.farm.count * 2) * (bonuses.foodMultiplier || 1);
+            let prodRate = (gameState.buildings.mine.count * 1.5) * (bonuses.prodMultiplier || 1);
+            let goldRate = (gameState.buildings.market.count * 3) * (bonuses.goldMultiplier || 1);
+            let cultureRate = (gameState.buildings.academy.count * 1) * (bonuses.cultureMultiplier || 1);
+
+            if (gameState.techs.wheel.researched) prodRate *= 1.2;
+            if (gameState.techs.writing.researched) cultureRate *= 1.3;
+            if (gameState.techs.currency.researched) goldRate *= 1.5;
+
+            goldRate += gameState.resources.pop * 0.2;
+            goldRate -= getArmyUpkeep();
+
+            gameState.rates.food = foodRate;
+            gameState.rates.prod = prodRate;
+            gameState.rates.gold = goldRate;
+            gameState.rates.culture = cultureRate;
+        }
+
+        function getArmyUpkeep() {
+            if (!gameState.selectedCiv) return 0;
+            let totalUnits = gameState.army.militia.count + gameState.army.archer.count + gameState.army.unique.count;
+            let discount = gameState.selectedCiv.bonuses.militaryUpkeepDiscount || 1;
+            return Math.floor(totalUnits * 0.5 * discount);
+        }
+
+        function getMilitaryPower() {
+            if (!gameState.selectedCiv) return 0;
+
+            let powerMultiplier = 1;
+            if (gameState.techs.bronze.researched) powerMultiplier += 0.25;
+            if (gameState.wonderCompleted && gameState.selectedCiv.id === 'china') powerMultiplier += 0.5;
+
+            let basePower = (gameState.army.militia.count * gameState.army.militia.power) +
+                            (gameState.army.archer.count * gameState.army.archer.power) +
+                            (gameState.army.unique.count * gameState.selectedCiv.uniqueUnit.power);
+
+            return Math.floor(basePower * powerMultiplier);
+        }
+
+        function manualHarvest() {
+            gameState.resources.gold += 1;
+            gameState.resources.food += 2;
+            gameState.resources.prod += 1;
+
+            const btn = document.getElementById('manual-harvest-btn');
+            btn.classList.add('scale-95');
+            setTimeout(() => btn.classList.remove('scale-95'), 100);
+
+            renderHeaderResources();
+        }
+
+        function gameTick() {
+            if (!gameState.selectedCiv) return;
+
+            calculateRates();
+
+            gameState.resources.gold = Math.max(0, gameState.resources.gold + gameState.rates.gold);
+            gameState.resources.food += gameState.rates.food;
+            gameState.resources.prod += gameState.rates.prod;
+            gameState.resources.culture += gameState.rates.culture;
+
+            if (gameState.resources.food >= gameState.resources.pop * 15) {
+                gameState.resources.food -= gameState.resources.pop * 15;
+                gameState.resources.pop += 1;
+                addLog(`Население выросло до ${gameState.resources.pop} тыс.!`);
+            }
+
+            renderHeaderResources();
+            renderDynamicTabs();
+        }
+
+        function switchTab(tabId) {
+            ['city', 'buildings', 'tech', 'military', 'expedition'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-btn-${t}`);
+                btn.className = "flex flex-col items-center py-1 px-2.5 rounded-lg text-slate-400 hover:text-slate-200";
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            activeBtn.className = "flex flex-col items-center py-1 px-2.5 rounded-lg text-amber-400 font-semibold bg-amber-500/10";
+
+            if (tabId === 'city') {
+                setTimeout(onWindowResize, 50);
+            }
+        }
+
+        function renderHeaderResources() {
+            document.getElementById('res-gold').innerText = Math.floor(gameState.resources.gold);
+            document.getElementById('res-food').innerText = Math.floor(gameState.resources.food);
+            document.getElementById('res-prod').innerText = Math.floor(gameState.resources.prod);
+            document.getElementById('res-culture').innerText = Math.floor(gameState.resources.culture);
+            document.getElementById('res-pop').innerText = gameState.resources.pop + 'k';
+
+            document.getElementById('rate-gold').innerText = (gameState.rates.gold >= 0 ? '+' : '') + gameState.rates.gold.toFixed(1) + '/с';
+            document.getElementById('rate-food').innerText = '+' + gameState.rates.food.toFixed(1) + '/с';
+            document.getElementById('rate-prod').innerText = '+' + gameState.rates.prod.toFixed(1) + '/с';
+            document.getElementById('rate-culture').innerText = '+' + gameState.rates.culture.toFixed(1) + '/с';
+        }
+
+        function renderDynamicTabs() {
+            renderWonderSection();
+            renderBuildingsSection();
+            renderTechSection();
+            renderMilitarySection();
+            renderCampaignsSection();
+        }
+
+        function renderWonderSection() {
+            if (!gameState.selectedCiv) return;
+
+            const wonder = gameState.selectedCiv.wonder;
+            const costContainer = document.getElementById('wonder-cost-container');
+            const discount = gameState.selectedCiv.bonuses.wonderDiscount || 1;
+
+            costContainer.innerHTML = '';
+            let canAfford = true;
+
+            Object.entries(wonder.cost).forEach(([res, amount]) => {
+                const finalCost = Math.floor(amount * discount);
+                const badge = document.createElement('span');
+                const hasEnough = gameState.resources[res] >= finalCost;
+                if (!hasEnough) canAfford = false;
+
+                badge.className = `px-2 py-0.5 rounded text-[10px] border ${hasEnough ? 'bg-slate-800 border-slate-600 text-slate-200' : 'bg-red-950/40 border-red-800 text-red-300'}`;
+                let resName = res === 'prod' ? 'Прод.' : res === 'gold' ? 'Зол.' : res === 'food' ? 'Еда' : 'Культ.';
+                badge.innerText = `${resName}: ${finalCost}`;
+                costContainer.appendChild(badge);
+            });
+
+            const buildBtn = document.getElementById('wonder-build-btn');
+            if (gameState.wonderCompleted) {
+                buildBtn.disabled = true;
+                buildBtn.innerText = 'Чудо Света Построено!';
+                buildBtn.className = 'w-full py-2 bg-emerald-600/30 text-emerald-400 font-bold text-xs rounded-lg cursor-not-allowed border border-emerald-500/30';
+                document.getElementById('wonder-status').innerText = 'Завершено';
+                document.getElementById('wonder-status').className = 'text-[11px] text-emerald-400 font-bold';
+            } else {
+                buildBtn.disabled = !canAfford;
+                if (!canAfford) {
+                    buildBtn.className = 'w-full py-2 bg-slate-800 text-slate-500 font-bold text-xs rounded-lg cursor-not-allowed';
+                } else {
+                    buildBtn.className = 'w-full py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 active:scale-95 text-slate-950 font-bold text-xs rounded-lg transition shadow';
+                }
+            }
+
+            document.getElementById('wonder-progress-bar').style.width = `${gameState.wonderProgress}%`;
+            document.getElementById('wonder-progress-text').innerText = `${gameState.wonderProgress}%`;
+        }
+
+        function buildWonderStep() {
+            if (gameState.wonderCompleted || !gameState.selectedCiv) return;
+
+            const wonder = gameState.selectedCiv.wonder;
+            const discount = gameState.selectedCiv.bonuses.wonderDiscount || 1;
+
+            for (let [res, amount] of Object.entries(wonder.cost)) {
+                if (gameState.resources[res] < Math.floor(amount * discount)) return;
+            }
+
+            for (let [res, amount] of Object.entries(wonder.cost)) {
+                gameState.resources[res] -= Math.floor(amount * discount);
+            }
+
+            gameState.wonderProgress += 25;
+            if (gameState.wonderProgress >= 100) {
+                gameState.wonderProgress = 100;
+                gameState.wonderCompleted = true;
+                addLog(`🎉 Вы воздвигли Чудо Света: ${wonder.name}!`);
+            } else {
+                addLog(`Прогресс Чуда Света: ${gameState.wonderProgress}%.`);
+            }
+
+            renderAll();
+            update3DCityModel();
+        }
+
+        function buyBuilding(id) {
+            const b = gameState.buildings[id];
+            const costProd = Math.floor(b.baseCost.prod ? b.baseCost.prod * Math.pow(1.25, b.count) : 0);
+            const costGold = Math.floor(b.baseCost.gold ? b.baseCost.gold * Math.pow(1.25, b.count) : 0);
+            const costFood = Math.floor(b.baseCost.food ? b.baseCost.food * Math.pow(1.25, b.count) : 0);
+
+            if ((costProd && gameState.resources.prod < costProd) ||
+                (costGold && gameState.resources.gold < costGold) ||
+                (costFood && gameState.resources.food < costFood)) return;
+
+            if (costProd) gameState.resources.prod -= costProd;
+            if (costGold) gameState.resources.gold -= costGold;
+            if (costFood) gameState.resources.food -= costFood;
+
+            b.count += 1;
+            addLog(`Построено: ${b.name} (${b.count})`);
+            renderAll();
+            update3DCityModel();
+        }
+
+        function renderBuildingsSection() {
+            const grid = document.getElementById('buildings-grid');
+            grid.innerHTML = '';
+
+            Object.entries(gameState.buildings).forEach(([id, b]) => {
+                const card = document.createElement('div');
+                card.className = 'glass-panel p-3 rounded-xl border border-slate-800 flex flex-col justify-between space-y-2';
+
+                const costProd = Math.floor(b.baseCost.prod ? b.baseCost.prod * Math.pow(1.25, b.count) : 0);
+                const costGold = Math.floor(b.baseCost.gold ? b.baseCost.gold * Math.pow(1.25, b.count) : 0);
+                const costFood = Math.floor(b.baseCost.food ? b.baseCost.food * Math.pow(1.25, b.count) : 0);
+
+                let canAfford = true;
+                if (costProd && gameState.resources.prod < costProd) canAfford = false;
+                if (costGold && gameState.resources.gold < costGold) canAfford = false;
+                if (costFood && gameState.resources.food < costFood) canAfford = false;
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-sm">
+                                <i class="fa-solid ${b.icon}"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs text-slate-200">${b.name}</h4>
+                                <span class="text-[10px] text-amber-400">Куплено: ${b.count}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-slate-400 flex gap-2">
+                        ${costGold ? `<span class="${gameState.resources.gold >= costGold ? 'text-amber-300' : 'text-red-400'}">Зол: ${costGold}</span>` : ''}
+                        ${costProd ? `<span class="${gameState.resources.prod >= costProd ? 'text-orange-300' : 'text-red-400'}">Прод: ${costProd}</span>` : ''}
+                        ${costFood ? `<span class="${gameState.resources.food >= costFood ? 'text-emerald-300' : 'text-red-400'}">Еда: ${costFood}</span>` : ''}
+                    </div>
+                    <button onclick="buyBuilding('${id}')" ${!canAfford ? 'disabled' : ''} class="w-full py-1.5 px-2 text-xs font-bold rounded-lg transition ${canAfford ? 'bg-amber-500 active:scale-95 text-slate-950' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}">
+                        Построить +1
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderTechSection() {
+            const grid = document.getElementById('tech-grid');
+            grid.innerHTML = '';
+
+            Object.entries(gameState.techs).forEach(([id, t]) => {
+                const card = document.createElement('div');
+                card.className = `glass-panel p-3 rounded-xl border ${t.researched ? 'border-emerald-500/40 bg-emerald-950/10' : 'border-slate-800'} flex flex-col justify-between space-y-2`;
+
+                const discount = gameState.selectedCiv ? (gameState.selectedCiv.bonuses.techDiscount || 1) : 1;
+                const costCulture = Math.floor(t.cost.culture * discount);
+                const canAfford = gameState.resources.culture >= costCulture && !t.researched;
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-8 h-8 rounded-lg ${t.researched ? 'bg-emerald-500/20 text-emerald-400' : 'bg-purple-500/10 text-purple-400'} border border-purple-500/20 flex items-center justify-center text-sm shrink-0">
+                            <i class="fa-solid ${t.icon}"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-xs text-slate-200">${t.name}</h4>
+                            <p class="text-[10px] text-slate-400 leading-tight">${t.desc}</p>
+                        </div>
+                    </div>
+                    ${!t.researched ? `
+                        <div class="flex items-center justify-between pt-1 border-t border-slate-800">
+                            <span class="text-[10px] ${gameState.resources.culture >= costCulture ? 'text-purple-300' : 'text-red-400'}">Культура: ${costCulture}</span>
+                            <button onclick="researchTech('${id}')" ${!canAfford ? 'disabled' : ''} class="py-1 px-3 text-[11px] font-bold rounded-lg transition ${canAfford ? 'bg-purple-600 active:scale-95 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}">
+                                Изучить
+                            </button>
+                        </div>
+                    ` : '<span class="text-[10px] text-emerald-400 font-bold self-end">Изучено</span>'}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function researchTech(id) {
+            const t = gameState.techs[id];
+            const discount = gameState.selectedCiv ? (gameState.selectedCiv.bonuses.techDiscount || 1) : 1;
+            const costCulture = Math.floor(t.cost.culture * discount);
+
+            if (gameState.resources.culture < costCulture || t.researched) return;
+
+            gameState.resources.culture -= costCulture;
+            t.researched = true;
+
+            addLog(`Изучено: ${t.name}!`);
+            renderAll();
+        }
+
+        function renderMilitarySection() {
+            if (!gameState.selectedCiv) return;
+
+            document.getElementById('total-military-power').innerText = getMilitaryPower();
+            const totalUnits = gameState.army.militia.count + gameState.army.archer.count + gameState.army.unique.count;
+            document.getElementById('total-units-count').innerText = totalUnits;
+            document.getElementById('upkeep-cost').innerText = getArmyUpkeep() + ' Зол.';
+
+            const grid = document.getElementById('units-grid');
+            grid.innerHTML = '';
+
+            const unitsList = [
+                { id: 'militia', ...gameState.army.militia },
+                { id: 'archer', ...gameState.army.archer },
+                { 
+                    id: 'unique', 
+                    name: gameState.selectedCiv.uniqueUnit.name,
+                    desc: gameState.selectedCiv.uniqueUnit.desc,
+                    power: gameState.selectedCiv.uniqueUnit.power,
+                    cost: gameState.selectedCiv.uniqueUnit.cost,
+                    count: gameState.army.unique.count
+                }
+            ];
+
+            unitsList.forEach(u => {
+                const card = document.createElement('div');
+                card.className = 'glass-panel p-3 rounded-xl border border-slate-800 flex flex-col justify-between space-y-2';
+
+                let canAfford = true;
+                if (gameState.resources.gold < u.cost.gold || gameState.resources.prod < u.cost.prod) canAfford = false;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <h4 class="font-bold text-xs text-slate-200">${u.name}</h4>
+                            <span class="text-[10px] bg-slate-800 text-amber-400 px-1.5 py-0.5 rounded font-mono">${u.count} шт.</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 leading-tight mb-1">${u.desc || 'Базовый воин.'}</p>
+                        <span class="text-[10px] text-red-400 font-semibold">Сила: ${u.power}</span>
+                    </div>
+                    <div class="space-y-1.5">
+                        <div class="text-[10px] text-slate-400 flex gap-2">
+                            <span class="${gameState.resources.gold >= u.cost.gold ? 'text-amber-300' : 'text-red-400'}">Зол: ${u.cost.gold}</span>
+                            <span class="${gameState.resources.prod >= u.cost.prod ? 'text-orange-300' : 'text-red-400'}">Прод: ${u.cost.prod}</span>
+                        </div>
+                        <button onclick="recruitUnit('${u.id}')" ${!canAfford ? 'disabled' : ''} class="w-full py-1.5 px-2 text-xs font-bold rounded-lg transition ${canAfford ? 'bg-red-600 active:scale-95 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}">
+                            Нанять
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function recruitUnit(id) {
+            let unitCost = id === 'unique' ? gameState.selectedCiv.uniqueUnit.cost : gameState.army[id].cost;
+
+            if (gameState.resources.gold < unitCost.gold || gameState.resources.prod < unitCost.prod) return;
+
+            gameState.resources.gold -= unitCost.gold;
+            gameState.resources.prod -= unitCost.prod;
+
+            if (id === 'unique') {
+                gameState.army.unique.count += 1;
+                addLog(`Нанят юнит: ${gameState.selectedCiv.uniqueUnit.name}!`);
+            } else {
+                gameState.army[id].count += 1;
+                addLog(`Нанят юнит: ${gameState.army[id].name}!`);
+            }
+
+            renderAll();
+        }
+
+        function renderCampaignsSection() {
+            const container = document.getElementById('campaigns-container');
+            container.innerHTML = '';
+
+            const currentPower = getMilitaryPower();
+
+            gameState.campaigns.forEach(c => {
+                const card = document.createElement('div');
+                card.className = 'glass-panel p-3 rounded-xl border border-slate-800 flex flex-col justify-between space-y-2.5';
+
+                const canWin = currentPower >= c.reqPower;
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 text-base shrink-0">
+                            <i class="fa-solid ${c.icon}"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-100 text-xs sm:text-sm">${c.name}</h4>
+                            <p class="text-[10px] text-slate-400">Нужно силы: <strong class="${canWin ? 'text-emerald-400' : 'text-red-400'}">${c.reqPower}</strong> (У вас: ${currentPower})</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800 text-[10px] text-slate-300">
+                        <div class="flex flex-wrap gap-2">
+                            ${c.reward.gold ? `<span class="text-amber-300">+${c.reward.gold} Зол.</span>` : ''}
+                            ${c.reward.prod ? `<span class="text-orange-300">+${c.reward.prod} Прод.</span>` : ''}
+                            ${c.reward.culture ? `<span class="text-purple-300">+${c.reward.culture} Культ.</span>` : ''}
+                        </div>
+                    </div>
+                    <button onclick="launchCampaign('${c.id}')" ${!canWin ? 'disabled' : ''} class="w-full py-2 text-xs font-bold rounded-lg transition ${canWin ? 'bg-gradient-to-r from-red-600 to-rose-600 active:scale-95 text-white shadow' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}">
+                        ${canWin ? 'В поход!' : 'Нехватка силы'}
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function launchCampaign(campaignId) {
+            const campaign = gameState.campaigns.find(c => c.id === campaignId);
+            if (!campaign || getMilitaryPower() < campaign.reqPower) return;
+
+            const mult = gameState.selectedCiv ? (gameState.selectedCiv.bonuses.campaignRewardMultiplier || 1) : 1;
+
+            if (campaign.reward.gold) gameState.resources.gold += Math.floor(campaign.reward.gold * mult);
+            if (campaign.reward.food) gameState.resources.food += Math.floor(campaign.reward.food * mult);
+            if (campaign.reward.prod) gameState.resources.prod += Math.floor(campaign.reward.prod * mult);
+            if (campaign.reward.culture) gameState.resources.culture += Math.floor(campaign.reward.culture * mult);
+
+            addLog(`⚔️ Победа в походе "${campaign.name}"!`);
+            renderAll();
+        }
+
+        function addLog(msg) {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            gameState.logs.unshift(`[${time}] ${msg}`);
+            if (gameState.logs.length > 15) gameState.logs.pop();
+
+            const logContainer = document.getElementById('game-logs');
+            if (logContainer) {
+                logContainer.innerHTML = gameState.logs.map(l => `<p class="border-b border-slate-800/40 pb-0.5">${l}</p>`).join('');
+            }
+        }
+
+        function renderAll() {
+            renderHeaderResources();
+            renderDynamicTabs();
+        }
+
+        window.onload = function() {
+            initCivSelector();
+            setInterval(gameTick, 1000);
+        };
+    </script>
+</body>
+</html>
